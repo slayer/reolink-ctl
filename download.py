@@ -127,6 +127,8 @@ def build_parser() -> argparse.ArgumentParser:
     output.add_argument("--output-dir", default="./downloads", help="Download directory (default: ./downloads)")
     output.add_argument("--dry-run", action="store_true", help="List files without downloading")
     output.add_argument("--stream", choices=["main", "sub"], default="main", help="Stream quality (default: main)")
+    output.add_argument("--verbose", "-v", action="store_true", help="Show detailed info (filenames, trigger flags)")
+    output.add_argument("--progress", action="store_true", help="Show curl-like download progress bar")
 
     return parser
 
@@ -240,6 +242,22 @@ def make_output_filename(vod) -> str:
     return f"{trigger_name}_{start}_{end}.mp4"
 
 
+def print_progress(downloaded_bytes: int, total_bytes: int, filename: str):
+    """Print a curl-like progress bar to stderr."""
+    if total_bytes <= 0:
+        return
+    pct = downloaded_bytes / total_bytes * 100
+    bar_width = 30
+    filled = int(bar_width * downloaded_bytes / total_bytes)
+    bar = "#" * filled + "-" * (bar_width - filled)
+    dl_mb = downloaded_bytes / (1024 * 1024)
+    total_mb = total_bytes / (1024 * 1024)
+    sys.stderr.write(f"\r  [{bar}] {pct:5.1f}% {dl_mb:.1f}/{total_mb:.1f} MB  {filename}")
+    sys.stderr.flush()
+    if downloaded_bytes >= total_bytes:
+        sys.stderr.write("\n")
+
+
 async def run(
     *,
     config: dict,
@@ -250,6 +268,8 @@ async def run(
     output_dir: Path,
     dry_run: bool,
     stream: str,
+    verbose: bool = False,
+    progress: bool = False,
 ):
     """Connect to camera, search, filter, and download recordings."""
     host = Host(
@@ -298,7 +318,10 @@ async def run(
             for vod in filtered:
                 trigger_name = get_primary_trigger_name(get_vod_triggers(vod))
                 duration = int(vod.duration.total_seconds())
-                print(f"  [{trigger_name}] {vod.start_time} - {vod.end_time} ({duration}s) {vod.file_name}")
+                line = f"  [{trigger_name}] {vod.start_time} - {vod.end_time} ({duration}s)"
+                if verbose:
+                    line += f" {vod.file_name}"
+                print(line)
             print(f"\nTotal: {len(filtered)} files")
             return
 
@@ -319,14 +342,23 @@ async def run(
                 downloaded += 1
                 continue
 
-            print(f"  [{i}/{len(filtered)}] Downloading: {filename}...")
+            if verbose:
+                triggers = get_vod_triggers(vod)
+                print(f"  [{i}/{len(filtered)}] {filename} triggers={triggers} src={vod.file_name}")
+            else:
+                print(f"  [{i}/{len(filtered)}] Downloading: {filename}...")
 
             try:
                 dl = await host.download_vod(filename=vod.file_name)
                 try:
+                    total = dl.length
+                    received = 0
                     with open(dest_path, "wb") as f:
                         async for chunk in dl.stream.iter_chunked(65536):
                             f.write(chunk)
+                            received += len(chunk)
+                            if progress:
+                                print_progress(received, total, filename)
                     downloaded += 1
                     size_mb = dest_path.stat().st_size / (1024 * 1024)
                     print(f"           Saved: {dest_path} ({size_mb:.1f} MB)")
@@ -335,7 +367,6 @@ async def run(
             except Exception as e:
                 failed += 1
                 print(f"           FAILED: {e}")
-                # Clean up partial file
                 if dest_path.exists():
                     dest_path.unlink()
 
@@ -386,6 +417,8 @@ def main():
         output_dir=Path(args.output_dir),
         dry_run=args.dry_run,
         stream=args.stream,
+        verbose=args.verbose,
+        progress=args.progress,
     ))
 
 
