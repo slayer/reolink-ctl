@@ -148,6 +148,47 @@ def resolve_config(args: argparse.Namespace) -> dict:
     }
 
 
+# -- Trigger name mapping for filenames --
+# Only includes members that exist in this version of reolink_aio
+TRIGGER_NAMES = {
+    VOD_trigger.PERSON: "person",
+    VOD_trigger.VEHICLE: "vehicle",
+    VOD_trigger.PET: "pet",
+    VOD_trigger.MOTION: "motion",
+}
+
+
+def filter_vods(vods: list, trigger_filter: VOD_trigger | None) -> list:
+    """Filter VOD files by trigger type. None means no filter."""
+    if trigger_filter is None:
+        return list(vods)
+    return [v for v in vods if v.triggers & trigger_filter]
+
+
+def apply_latest(vods: list, latest: int | None) -> list:
+    """Sort by start_time descending and take the latest N."""
+    if latest is None:
+        return vods
+    sorted_vods = sorted(vods, key=lambda v: v.start_time, reverse=True)
+    return sorted_vods[:latest]
+
+
+def get_primary_trigger_name(triggers: VOD_trigger) -> str:
+    """Get a human-readable name for the primary trigger."""
+    for trigger_val, name in TRIGGER_NAMES.items():
+        if triggers & trigger_val:
+            return name
+    return "recording"
+
+
+def make_output_filename(vod) -> str:
+    """Generate output filename like 'person_103000_104500.mp4'."""
+    trigger_name = get_primary_trigger_name(vod.triggers)
+    start = vod.start_time.strftime("%H%M%S")
+    end = vod.end_time.strftime("%H%M%S")
+    return f"{trigger_name}_{start}_{end}.mp4"
+
+
 async def run(
     *,
     config: dict,
