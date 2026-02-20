@@ -1,0 +1,12 @@
+[project]
+name = "reolink-downloader"
+version = "0.1.0"
+description = "Download Reolink camera recordings filtered by AI detection type"
+requires-python = ">=3.11"
+dependencies = [
+    "reolink_aio",
+    "python-dotenv",
+]
+
+[project.scripts]
+reolink-download = "download:main"
