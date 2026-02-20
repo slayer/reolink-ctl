@@ -71,9 +71,7 @@ def build_trigger_filter(
     *,
     person: bool,
     vehicle: bool,
-    animal: bool,
-    face: bool,
-    doorbell: bool,
+    pet: bool,
     motion: bool,
     all_triggers: bool,
 ) -> Optional[VOD_trigger]:
@@ -86,12 +84,8 @@ def build_trigger_filter(
         trigger |= VOD_trigger.PERSON
     if vehicle:
         trigger |= VOD_trigger.VEHICLE
-    if animal:
-        trigger |= VOD_trigger.ANIMAL
-    if face:
-        trigger |= VOD_trigger.FACE
-    if doorbell:
-        trigger |= VOD_trigger.DOORBELL
+    if pet:
+        trigger |= VOD_trigger.PET
     if motion:
         trigger |= VOD_trigger.MOTION
 
@@ -110,13 +104,11 @@ def build_parser() -> argparse.ArgumentParser:
     conn.add_argument("-u", "--user", help="Username (env: REOLINK_USER)")
     conn.add_argument("-p", "--password", help="Password (env: REOLINK_PASSWORD)")
 
-    # Trigger filters
+    # Trigger filters — only types supported by installed reolink_aio
     triggers = parser.add_argument_group("trigger filters")
     triggers.add_argument("--person", action="store_true", help="Person detection")
     triggers.add_argument("--vehicle", action="store_true", help="Vehicle detection")
-    triggers.add_argument("--animal", action="store_true", help="Animal/pet detection")
-    triggers.add_argument("--face", action="store_true", help="Face detection")
-    triggers.add_argument("--doorbell", action="store_true", help="Doorbell press")
+    triggers.add_argument("--pet", action="store_true", help="Pet/animal detection")
     triggers.add_argument("--motion", action="store_true", help="Motion detection")
     triggers.add_argument("--all", dest="all_triggers", action="store_true",
                           help="All trigger types (default if none selected)")
@@ -228,9 +220,7 @@ def main():
     trigger_filter = build_trigger_filter(
         person=args.person,
         vehicle=args.vehicle,
-        animal=args.animal,
-        face=args.face,
-        doorbell=args.doorbell,
+        pet=args.pet,
         motion=args.motion,
         all_triggers=args.all_triggers,
     )

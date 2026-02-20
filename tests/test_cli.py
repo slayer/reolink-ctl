@@ -66,32 +66,32 @@ def test_parse_date_range_from_to():
 def test_build_trigger_filter_person():
     from download import build_trigger_filter
     from reolink_aio.typings import VOD_trigger
-    trigger = build_trigger_filter(person=True, vehicle=False, animal=False,
-                                    face=False, doorbell=False, motion=False, all_triggers=False)
+    trigger = build_trigger_filter(person=True, vehicle=False, pet=False,
+                                    motion=False, all_triggers=False)
     assert trigger & VOD_trigger.PERSON
 
 
 def test_build_trigger_filter_combined():
     from download import build_trigger_filter
     from reolink_aio.typings import VOD_trigger
-    trigger = build_trigger_filter(person=True, vehicle=True, animal=False,
-                                    face=False, doorbell=False, motion=False, all_triggers=False)
+    trigger = build_trigger_filter(person=True, vehicle=True, pet=False,
+                                    motion=False, all_triggers=False)
     assert trigger & VOD_trigger.PERSON
     assert trigger & VOD_trigger.VEHICLE
 
 
 def test_build_trigger_filter_all_returns_none():
     from download import build_trigger_filter
-    trigger = build_trigger_filter(person=False, vehicle=False, animal=False,
-                                    face=False, doorbell=False, motion=False, all_triggers=True)
+    trigger = build_trigger_filter(person=False, vehicle=False, pet=False,
+                                    motion=False, all_triggers=True)
     assert trigger is None
 
 
 def test_build_trigger_filter_none_selected_returns_none():
     """No flags selected = no filter = return all."""
     from download import build_trigger_filter
-    trigger = build_trigger_filter(person=False, vehicle=False, animal=False,
-                                    face=False, doorbell=False, motion=False, all_triggers=False)
+    trigger = build_trigger_filter(person=False, vehicle=False, pet=False,
+                                    motion=False, all_triggers=False)
     assert trigger is None
 
 
