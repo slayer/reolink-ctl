@@ -108,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Trigger filters — only types supported by installed reolink_aio
     triggers = parser.add_argument_group("trigger filters")
     triggers.add_argument("--person", action="store_true", help="Person detection")
-    triggers.add_argument("--vehicle", action="store_true", help="Vehicle detection")
+    triggers.add_argument("--vehicle", "--car", action="store_true", help="Vehicle/car detection")
     triggers.add_argument("--pet", action="store_true", help="Pet/animal detection")
     triggers.add_argument("--motion", action="store_true", help="Motion detection")
     triggers.add_argument("--all", dest="all_triggers", action="store_true",
@@ -142,7 +142,6 @@ def resolve_config(args: argparse.Namespace) -> dict:
 
 
 # -- Trigger name mapping for filenames --
-# Only includes members that exist in this version of reolink_aio
 TRIGGER_NAMES = {
     VOD_trigger.PERSON: "person",
     VOD_trigger.VEHICLE: "vehicle",
@@ -151,11 +150,70 @@ TRIGGER_NAMES = {
 }
 
 
+def parse_triggers_from_filename(filename: str) -> VOD_trigger:
+    """Parse trigger flags from recording filename hex field.
+
+    Handles both old (7-char hex like '6D28808') and new (10-char hex like
+    '6D28808000') filename formats. The library's built-in parser (v0.9.0)
+    doesn't recognize the newer 7-part filename format, so we do it here.
+
+    Trigger nibble layout (same for both formats, at fixed offset after prefix):
+      nibble T: bit 2 = Person, bit 0 = Vehicle
+      nibble t: bit 3 = Pet,    bit 0 = Timer
+      nibble r: bit 3 = Motion
+    """
+    # Strip directory path and extension
+    basename = filename.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    parts = basename.split("_")
+
+    # Find the hex flags field — it's the second-to-last underscore-separated part
+    # Old: RecM02_20230515_071811_071835_6D28900_13CE8C7
+    # New: RecM07_20260220_000000_000024_0_6D28808000_E386CE
+    if len(parts) < 6:
+        return VOD_trigger.NONE
+
+    hex_field = parts[-2]
+
+    # Extract the 3 trigger nibbles: they start at offset 4 in the hex field
+    # (first 4 chars like '6D28' are camera model prefix)
+    if len(hex_field) < 7:
+        return VOD_trigger.NONE
+
+    try:
+        nib_t = int(hex_field[4], 16)
+        nib_u = int(hex_field[5], 16)
+        nib_r = int(hex_field[6], 16)
+    except (ValueError, IndexError):
+        return VOD_trigger.NONE
+
+    triggers = VOD_trigger.NONE
+    if nib_t & 4:
+        triggers |= VOD_trigger.PERSON
+    if nib_t & 1:
+        triggers |= VOD_trigger.VEHICLE
+    if nib_u & 8:
+        triggers |= VOD_trigger.PET
+    if nib_u & 1:
+        triggers |= VOD_trigger.TIMER
+    if nib_r & 8:
+        triggers |= VOD_trigger.MOTION
+
+    return triggers
+
+
+def get_vod_triggers(vod) -> VOD_trigger:
+    """Get triggers for a VOD file, falling back to our own filename parser."""
+    triggers = vod.triggers
+    if triggers == VOD_trigger.NONE:
+        triggers = parse_triggers_from_filename(vod.file_name)
+    return triggers
+
+
 def filter_vods(vods: list, trigger_filter: VOD_trigger | None) -> list:
     """Filter VOD files by trigger type. None means no filter."""
     if trigger_filter is None:
         return list(vods)
-    return [v for v in vods if v.triggers & trigger_filter]
+    return [v for v in vods if get_vod_triggers(v) & trigger_filter]
 
 
 def apply_latest(vods: list, latest: int | None) -> list:
@@ -176,7 +234,7 @@ def get_primary_trigger_name(triggers: VOD_trigger) -> str:
 
 def make_output_filename(vod) -> str:
     """Generate output filename like 'person_103000_104500.mp4'."""
-    trigger_name = get_primary_trigger_name(vod.triggers)
+    trigger_name = get_primary_trigger_name(get_vod_triggers(vod))
     start = vod.start_time.strftime("%H%M%S")
     end = vod.end_time.strftime("%H%M%S")
     return f"{trigger_name}_{start}_{end}.mp4"
@@ -238,7 +296,7 @@ async def run(
         if dry_run:
             print("\n--- Dry run: files that would be downloaded ---")
             for vod in filtered:
-                trigger_name = get_primary_trigger_name(vod.triggers)
+                trigger_name = get_primary_trigger_name(get_vod_triggers(vod))
                 duration = int(vod.duration.total_seconds())
                 print(f"  [{trigger_name}] {vod.start_time} - {vod.end_time} ({duration}s) {vod.file_name}")
             print(f"\nTotal: {len(filtered)} files")
