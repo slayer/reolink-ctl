@@ -23,6 +23,8 @@ def parse_since(since_str: str) -> tuple[datetime, datetime]:
         raise ValueError(f"Invalid --since format: {since_str!r}. Use e.g. 30m, 2h, 3d")
 
     amount = int(match.group(1))
+    if amount <= 0:
+        raise ValueError(f"Invalid --since value: must be > 0, got {since_str!r}")
     unit = match.group(2)
     multiplier = {"m": 60, "h": 3600, "d": 86400}[unit]
 
@@ -170,6 +172,11 @@ def main():
         parser.error("Camera host required: use --host or set REOLINK_HOST in .env")
     if not config["password"]:
         parser.error("Password required: use --password or set REOLINK_PASSWORD in .env")
+
+    if (args.from_date or args.to_date) and not (args.from_date and args.to_date):
+        parser.error("--from and --to must be used together")
+    if args.since and (args.date or args.from_date):
+        parser.error("--since cannot be combined with --date or --from/--to")
 
     # Determine time range
     if args.since:

@@ -93,3 +93,9 @@ def test_build_trigger_filter_none_selected_returns_none():
     trigger = build_trigger_filter(person=False, vehicle=False, animal=False,
                                     face=False, doorbell=False, motion=False, all_triggers=False)
     assert trigger is None
+
+
+def test_parse_since_zero():
+    from download import parse_since
+    with pytest.raises(ValueError):
+        parse_since("0m")
