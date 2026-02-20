@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
+from reolink_aio.api import Host
 from reolink_aio.typings import VOD_trigger
 
 
@@ -186,14 +187,107 @@ async def run(
     config: dict,
     start: datetime,
     end: datetime,
-    trigger_filter: Optional[VOD_trigger],
-    latest: Optional[int],
+    trigger_filter: VOD_trigger | None,
+    latest: int | None,
     output_dir: Path,
     dry_run: bool,
     stream: str,
 ):
-    """Stub -- implemented in Task 4."""
-    raise NotImplementedError("run() not yet implemented")
+    """Connect to camera, search, filter, and download recordings."""
+    host = Host(
+        config["host"],
+        config["user"],
+        config["password"],
+        use_https=False,
+        timeout=60,
+    )
+
+    try:
+        print(f"Connecting to {config['host']}...")
+        await host.get_host_data()
+        print(f"Connected. Searching recordings from {start} to {end}...")
+
+        _statuses, vods = await host.request_vod_files(
+            channel=0,
+            start=start,
+            end=end,
+            stream=stream,
+            status_only=False,
+        )
+
+        print(f"Found {len(vods)} total recordings.")
+
+        # Client-side filtering by trigger type
+        filtered = filter_vods(vods, trigger_filter)
+        trigger_desc = "all types"
+        if trigger_filter is not None:
+            names = [n for t, n in TRIGGER_NAMES.items() if trigger_filter & t]
+            trigger_desc = ", ".join(names)
+
+        print(f"Matched {len(filtered)} recordings for: {trigger_desc}")
+
+        if not filtered:
+            print("No matching recordings found.")
+            return
+
+        # Apply --latest limit
+        filtered = apply_latest(filtered, latest)
+        if latest:
+            print(f"Limited to {len(filtered)} most recent.")
+
+        if dry_run:
+            print("\n--- Dry run: files that would be downloaded ---")
+            for vod in filtered:
+                trigger_name = get_primary_trigger_name(vod.triggers)
+                duration = int(vod.duration.total_seconds())
+                print(f"  [{trigger_name}] {vod.start_time} - {vod.end_time} ({duration}s) {vod.file_name}")
+            print(f"\nTotal: {len(filtered)} files")
+            return
+
+        # Download files
+        downloaded = 0
+        failed = 0
+
+        for i, vod in enumerate(filtered, 1):
+            date_dir = vod.start_time.strftime("%Y-%m-%d")
+            dest_dir = output_dir / date_dir
+            dest_dir.mkdir(parents=True, exist_ok=True)
+
+            filename = make_output_filename(vod)
+            dest_path = dest_dir / filename
+
+            if dest_path.exists():
+                print(f"  [{i}/{len(filtered)}] Skipping (exists): {dest_path}")
+                downloaded += 1
+                continue
+
+            print(f"  [{i}/{len(filtered)}] Downloading: {filename}...")
+
+            try:
+                dl = await host.download_vod(filename=vod.file_name)
+                try:
+                    with open(dest_path, "wb") as f:
+                        async for chunk in dl.stream.iter_chunked(65536):
+                            f.write(chunk)
+                    downloaded += 1
+                    size_mb = dest_path.stat().st_size / (1024 * 1024)
+                    print(f"           Saved: {dest_path} ({size_mb:.1f} MB)")
+                finally:
+                    dl.close()
+            except Exception as e:
+                failed += 1
+                print(f"           FAILED: {e}")
+                # Clean up partial file
+                if dest_path.exists():
+                    dest_path.unlink()
+
+        print(f"\nDone. Downloaded: {downloaded}, Failed: {failed}")
+
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        await host.logout()
 
 
 def main():
