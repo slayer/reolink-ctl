@@ -1,12 +1,21 @@
 [project]
-name = "reolink-downloader"
-version = "0.1.0"
-description = "Download Reolink camera recordings filtered by AI detection type"
+name = "reolink-ctl"
+version = "0.2.0"
+description = "CLI for Reolink camera control"
 requires-python = ">=3.9"
 dependencies = [
     "reolink_aio>=0.9.0,<0.9.8",
     "python-dotenv",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
 [project.scripts]
-reolink-download = "download:main"
+reolink-ctl = "reolink_ctl.cli:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
