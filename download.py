@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "reolink_aio>=0.9.0,<0.9.8",
+#     "python-dotenv",
+# ]
+# ///
 # download.py
 """Download Reolink camera recordings filtered by AI detection type."""
 
