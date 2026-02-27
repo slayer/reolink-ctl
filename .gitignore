@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 .worktrees/
 *.egg-info/
+dist/
 .claude/
 CLAUDE.md
 .envrc
