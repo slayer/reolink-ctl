@@ -194,3 +194,34 @@ async def test_audio_volume_status(config, capsys):
 
     assert "volume" in data
     assert isinstance(data["volume"], int)
+
+
+# -- config ------------------------------------------------------------------
+
+async def test_config_all(config, capsys):
+    from reolink_ctl.commands.config import _run
+
+    await _run(_args(section=None), config)
+    data = _parse_json(capsys)
+
+    assert "device" in data
+    assert "image" in data
+    assert "audio" in data
+    assert "detection" in data
+    assert "lighting" in data
+    assert "notifications" in data
+    assert "ptz" in data
+    assert "system" in data
+    assert "model" in data["device"]
+
+
+async def test_config_single_section(config, capsys):
+    from reolink_ctl.commands.config import _run
+
+    await _run(_args(section="image"), config)
+    data = _parse_json(capsys)
+
+    assert "brightness" in data
+    assert "contrast" in data
+    # Should not have nested sections
+    assert "device" not in data
