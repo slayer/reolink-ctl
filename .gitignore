@@ -5,3 +5,6 @@ __pycache__/
 .venv/
 .worktrees/
 *.egg-info/
+.claude/
+CLAUDE.md
+.envrc
