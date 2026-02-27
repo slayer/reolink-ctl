@@ -1,6 +1,6 @@
 # reolink-ctl
 
-A command-line tool for controlling Reolink cameras. Manage device info, snapshots, live streams, recording downloads, PTZ, lighting, image settings, motion detection, audio, notifications, webhooks, and system administration.
+A command-line tool for controlling Reolink cameras. Manage device info, configuration, snapshots, live streams, recording downloads, PTZ, lighting, image settings, motion detection, audio, notifications, webhooks, and system administration.
 
 Built on top of [reolink_aio](https://github.com/starkillerOG/reolink_aio).
 
@@ -114,6 +114,26 @@ Example output:
 
 ---
 
+#### `config` — Camera Configuration Dump
+
+```bash
+reolink-ctl config                          # All settings grouped by section
+reolink-ctl config device                   # Device info only
+reolink-ctl config image                    # Image settings only
+reolink-ctl config audio                    # Audio settings only
+reolink-ctl config detection                # Detection settings only
+reolink-ctl config lighting                 # Lighting settings only
+reolink-ctl config notifications            # Notification settings only
+reolink-ctl config ptz                      # PTZ settings only
+reolink-ctl config system                   # System info (time, storage)
+```
+
+Sections: `device`, `image`, `audio`, `detection`, `lighting`, `notifications`, `ptz`, `system`.
+
+With `--json`, outputs a nested dict with section keys (or a flat dict for a single section).
+
+---
+
 #### `snapshot` — Capture JPEG Still
 
 ```bash
@@ -173,7 +193,9 @@ reolink-ctl download --from 2026-02-15 --to 2026-02-18   # Date range
 reolink-ctl download --dry-run              # List files without downloading
 reolink-ctl download --latest 5             # Only the 5 most recent
 reolink-ctl download --output-dir ./clips   # Custom download directory (default: ./downloads)
-reolink-ctl download --stream sub           # Sub-stream quality
+reolink-ctl download --high                 # High quality / main stream (default)
+reolink-ctl download --low                  # Low quality / sub stream
+reolink-ctl download --stream sub           # Same as --low
 reolink-ctl download --progress             # Show progress bar
 ```
 

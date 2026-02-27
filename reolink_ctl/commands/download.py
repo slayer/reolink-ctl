@@ -60,6 +60,8 @@ def register(subparsers):
     output.add_argument("--output-dir", default="./downloads", help="Download directory (default: ./downloads)")
     output.add_argument("--dry-run", action="store_true", help="List files without downloading")
     output.add_argument("--stream", choices=["main", "sub"], default="main", help="Stream quality (default: main)")
+    output.add_argument("--high", dest="stream", action="store_const", const="main", help="High quality (alias for --stream main)")
+    output.add_argument("--low", dest="stream", action="store_const", const="sub", help="Low quality (alias for --stream sub)")
     output.add_argument("--progress", action="store_true", help="Show download progress bar")
 
     p.set_defaults(func=run)
