@@ -24,11 +24,12 @@ from reolink_ctl.commands import (
     webhook,
     system,
     config,
+    monitor,
 )
 
 COMMAND_MODULES = [
     info, snapshot, stream, download, ptz,
-    light, image, detect, audio, notify, webhook, system, config,
+    light, image, detect, audio, notify, webhook, system, config, monitor,
 ]
 
 

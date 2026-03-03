@@ -225,3 +225,27 @@ async def test_config_single_section(config, capsys):
     assert "contrast" in data
     # Should not have nested sections
     assert "device" not in data
+
+
+# -- monitor ----------------------------------------------------------------
+
+async def test_monitor(config, capsys):
+    """Subscribe, listen for 1 minute, then cleanly exit.
+
+    Validates that the subscription lifecycle works against a real camera.
+    Any events that fire during the window are printed as NDJSON.
+    """
+    from reolink_ctl.commands.monitor import _run
+
+    await _run(_args(types=None, timeout=60), config)
+
+    # No crash = subscription + pull loop + unsubscribe all succeeded.
+    # If events fired, each line is valid JSON.
+    out = capsys.readouterr().out.strip()
+    if out:
+        for line in out.splitlines():
+            event = json.loads(line)
+            assert "timestamp" in event
+            assert "channel" in event
+            assert "event" in event
+            assert "state" in event

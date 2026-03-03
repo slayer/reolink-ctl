@@ -121,6 +121,17 @@ def mock_host():
     host.webhook_remove = AsyncMock()
     host.webhook_disable = AsyncMock()
 
+    # ONVIF subscriptions (used by monitor command)
+    host.subscribe = AsyncMock()
+    host.renew = AsyncMock()
+    host.unsubscribe = AsyncMock()
+    host.pull_point_request = AsyncMock(return_value=[])
+    host.renewtimer.return_value = 600
+    host.subscribed.return_value = True
+    host.ai_supported_types.return_value = []
+    host.ai_detection_states.return_value = {}
+    host.visitor_detected.return_value = False
+
     # System
     host.reboot = AsyncMock()
     host.check_new_firmware = AsyncMock(return_value=False)
