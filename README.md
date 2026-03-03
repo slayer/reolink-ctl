@@ -1,6 +1,6 @@
 # reolink-ctl
 
-A command-line tool for controlling Reolink cameras. Manage device info, configuration, snapshots, live streams, recording downloads, PTZ, lighting, image settings, motion detection, audio, notifications, webhooks, and system administration.
+A command-line tool for controlling Reolink cameras. Manage device info, configuration, snapshots, live streams, recording downloads, PTZ, lighting, image settings, motion detection, real-time event monitoring, audio, notifications, webhooks, and system administration.
 
 Built on top of [reolink_aio](https://github.com/starkillerOG/reolink_aio).
 
@@ -360,6 +360,40 @@ Running `detect` without a subcommand shows a summary of motion and PIR status.
 
 ---
 
+#### `monitor` — Real-time Event Monitoring
+
+Watch for camera events (motion, AI detections, visitor) in real time via ONVIF long-poll subscription.
+
+```bash
+reolink-ctl monitor                         # All events, human-readable
+reolink-ctl monitor -t people -t vehicle    # Only person & vehicle detections
+reolink-ctl monitor --timeout 60            # Stop after 60 seconds
+reolink-ctl monitor --json                  # NDJSON output (one JSON object per line)
+```
+
+Human-readable output:
+
+```
+[2026-03-02T10:15:30+00:00] ch0 people     ON
+[2026-03-02T10:15:35+00:00] ch0 people     OFF
+```
+
+JSON output (`--json`):
+
+```json
+{"timestamp":"2026-03-02T10:15:30+00:00","channel":0,"event":"people","state":true}
+```
+
+Pipe to `jq` for filtering:
+
+```bash
+reolink-ctl monitor --json | jq 'select(.state == true)'
+```
+
+Available event types: `motion`, `people`, `vehicle`, `dog_cat`, `face`, `package`, `visitor`.
+
+---
+
 #### `audio` — Audio Controls
 
 **Recording:**
@@ -497,6 +531,9 @@ reolink-ctl --json stream --format rtsp | jq -r .rtsp
 
 # Check if motion is detected
 reolink-ctl --json detect motion status | jq .motion_detected
+
+# Log only person-detected events
+reolink-ctl monitor --json -t people | jq 'select(.state == true)'
 ```
 
 ## Multi-Channel (NVR)
